@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>sb826png</title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+  <h1>sb826png</h1>
+  <p>ここ3ヶ月であなたが参加した打ち合わせは。</p>
+
+  <!--Add buttons to initiate auth sequence and sign out-->
+  <button id="authorize_button" style="display: none;">カレンダーへのアクセスを許可する</button>
+  <button id="signout_button" style="display: none;">Sign Out</button>
+
+  <ul id='results'></ul>
+  <style>
+    #results {
+      display: flex;
+      padding: 0;
+    }
+
+    #results li {
+      display: flex;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    #results li + li {
+      margin-left: 2em;
+    }
+
+    #results span:last-of-type {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+  </style>
+
+  <h2>内訳</h2>
+  <pre id="content1"></pre>
+  <pre id="content2"></pre>
+  <pre id="content3"></pre>
+  <pre id="content4"></pre>
+
+  <script>
+    // Client ID and API key from the Developer Console
+    var CLIENT_ID = '554158166515-8sqhs67ifpiclnco7rn3p6g923to9bnk.apps.googleusercontent.com';
+    var API_KEY = 'AIzaSyDtUsY-io8oaDBHcNBfGOnYYRlxibuKGRU';
+
+    // Array of API discovery doc URLs for APIs used by the quickstart
+    var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+
+    // Authorization scopes required by the API; multiple scopes can be
+    // included, separated by spaces.
+    var SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+
+    var authorizeButton = document.getElementById('authorize_button');
+    var signoutButton = document.getElementById('signout_button');
+
+    /**
+     *  On load, called to load the auth2 library and API client library.
+     */
+    function handleClientLoad() {
+      gapi.load('client:auth2', initClient);
+    }
+
+    /**
+     *  Initializes the API client library and sets up sign-in state
+     *  listeners.
+     */
+    function initClient() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES
+      }).then(function () {
+        // Listen for sign-in state changes.
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+        // Handle the initial sign-in state.
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        authorizeButton.onclick = handleAuthClick;
+        signoutButton.onclick = handleSignoutClick;
+      });
+    }
+
+    /**
+     *  Called when the signed in status changes, to update the UI
+     *  appropriately. After a sign-in, the API is called.
+     */
+    function updateSigninStatus(isSignedIn) {
+      if (isSignedIn) {
+        authorizeButton.style.display = 'none';
+        signoutButton.style.display = 'block';
+        countUpcomingEvents();
+      } else {
+        authorizeButton.style.display = 'block';
+        signoutButton.style.display = 'none';
+      }
+    }
+
+    /**
+     *  Sign in the user upon button click.
+     */
+    function handleAuthClick(event) {
+      gapi.auth2.getAuthInstance().signIn();
+    }
+
+    /**
+     *  Sign out the user upon button click.
+     */
+    function handleSignoutClick(event) {
+      gapi.auth2.getAuthInstance().signOut();
+    }
+
+    /**
+     * Append a pre element to the body containing the given message
+     * as its text node. Used to display the results of the API call.
+     *
+     * @param {string} message Text to be placed in pre element.
+     */
+    function appendPre(parent, message) {
+      var textContent = document.createTextNode(message + '\n');
+      parent.appendChild(textContent);
+    }
+
+    function appendAllToPre(events, parent) {
+      var fragment = document.createDocumentFragment()
+
+      for (i = 0; i < events.length; i++) {
+        var event = events[i];
+        var when = event.start.dateTime;
+        if (!when) {
+          when = event.start.date;
+        }
+
+        var attendees = event.attendees
+        appendPre(fragment, event.summary + ' (' + when + ')')
+      }
+
+      parent.appendChild(fragment)
+    }
+
+    function appendLi(text) {
+      var ul = document.getElementById('results');
+      var li = document.createElement('li')
+      li.innerHTML = text
+      ul.appendChild(li)
+    }
+
+    /**
+     * Print the summary and start datetime/date of the next ten events in
+     * the authorized user's calendar. If no events are found an
+     * appropriate message is printed.
+     */
+    function countUpcomingEvents() {
+      var startDate = moment().subtract(3, 'months').startOf('month')
+      gapi.client.calendar.events.list({
+        'calendarId': 'primary',
+        'maxResults': 2500,
+        'orderBy': 'startTime',
+        'timeMin': startDate.toISOString(),
+        'timeMax': moment().toISOString(),
+        'showDeleted': false,
+        'singleEvents': true,
+      }).then(function (response) {
+        var events = response.result.items.filter(event => event.attendees);
+
+        if (events.length === 0) {
+          appendPre(document.body, 'No events found.');
+          return;
+        }
+
+        var mtg1to3 = events.filter(event => event.attendees.length <= 3)
+        var mtg4to6 = events.filter(event => event.attendees.length >= 4 && event.attendees.length <= 6)
+        var mtg7to10 = events.filter(event => event.attendees.length >= 7 && event.attendees.length <= 10)
+        var mtgOver10 = events.filter(event => event.attendees.length > 10)
+        appendLi('<span>3人以下のMTG</span><span>' + mtg1to3.length + '</span>');
+        appendLi('<span>4〜6人のMTG</span><span>' + mtg4to6.length + '</span>');
+        appendLi('<span>7〜10人のMTG</span><span>' + mtg7to10.length + '</span>');
+        appendLi('<span>11人以上のMTG</span><span>' + mtgOver10.length + '</span>');
+
+        var parent1 = document.getElementById('content1');
+        appendPre(parent1, '3人以下の MTG:');
+        appendAllToPre(mtg1to3, parent1);
+        var parent2 = document.getElementById('content2');
+        appendPre(parent2, '4〜6人の MTG:');
+        appendAllToPre(mtg4to6, parent2);
+        var parent3 = document.getElementById('content3');
+        appendPre(parent3, '7〜10人の MTG:');
+        appendAllToPre(mtg7to10, parent3);
+        var parent4 = document.getElementById('content4');
+        appendPre(parent4, '11人以上の MTG:');
+        appendAllToPre(mtgOver10, parent4);
+      });
+    }
+  </script>
+
+  <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
+  <script async defer src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.js"></script>
+</body>
+
+</html>
