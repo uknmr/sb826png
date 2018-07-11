@@ -28,7 +28,7 @@
       text-align: center;
     }
 
-    #results li + li {
+    #results li+li {
       margin-left: 2em;
     }
 
@@ -167,7 +167,10 @@
         'showDeleted': false,
         'singleEvents': true,
       }).then(function (response) {
-        var events = response.result.items.filter(event => event.attendees && !event.summary.match(/ランチ|らんち|おひる|Lunch/i));
+        var events = response.result.items.filter(event => {
+          const summary = event.summary || ''
+          return event.attendees && !summary.match(/ランチ|らんち|おひる|Lunch/i)
+        });
 
         if (events.length === 0) {
           appendPre(document.body, 'No events found.');
