@@ -167,7 +167,7 @@
         'showDeleted': false,
         'singleEvents': true,
       }).then(function (response) {
-        var events = response.result.items.filter(event => event.attendees);
+        var events = response.result.items.filter(event => event.attendees && !event.summary.match(/ランチ|らんち|おひる|Lunch/i));
 
         if (events.length === 0) {
           appendPre(document.body, 'No events found.');
