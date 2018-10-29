@@ -27,29 +27,32 @@
     #results {
       display: flex;
       padding: 0;
+      list-style: none;
     }
 
     #results li {
-      display: flex;
-      flex-direction: column;
       text-align: center;
+    }
+
+    #results h1 {
+      font-size: 1rem;
+      font-weight: normal;
     }
 
     #results li+li {
       margin-left: 2em;
     }
 
-    #results span:last-of-type {
+    #results em {
       font-size: 2rem;
+      font-style: normal;
       font-weight: bold;
     }
   </style>
 
-  <h2>内訳</h2>
+  <h1>内訳</h1>
   <pre id="content1"></pre>
   <pre id="content2"></pre>
-  <pre id="content3"></pre>
-  <pre id="content4"></pre>
 
   <script>
     // Client ID and API key from the Developer Console
@@ -73,8 +76,6 @@
       document.getElementById('results').innerHTML = ''
       document.getElementById('content1').innerHTML = ''
       document.getElementById('content2').innerHTML = ''
-      document.getElementById('content3').innerHTML = ''
-      document.getElementById('content4').innerHTML = ''
 
       gapi.load('client:auth2', initClient);
     }
@@ -145,13 +146,17 @@
 
       for (i = 0; i < events.length; i++) {
         var event = events[i];
-        var when = event.start.dateTime;
-        if (!when) {
-          when = event.start.date;
+        var start = event.start.dateTime;
+        if (!start) {
+          start = event.start.date;
+        }
+        var end = event.end.dateTime;
+        if (!end) {
+          end = event.end.date;
         }
 
         var attendees = event.attendees
-        appendPre(fragment, event.summary + ' (' + when + ')')
+        appendPre(fragment, event.summary + ' (' + start + ' / ' + end + ')[' + moment.duration(moment(end).diff(moment(start))).asHours() + ']')
       }
 
       parent.appendChild(fragment)
@@ -171,7 +176,6 @@
      */
     function countUpcomingEvents() {
       var startDate = moment().subtract(3, 'months').startOf('month')
-      console.log(startDate.toISOString(), moment().toISOString())
       
       gapi.client.calendar.events.list({
         'calendarId': 'primary',
@@ -192,27 +196,23 @@
           return;
         }
 
-        var mtg1to3 = events.filter(event => event.attendees.length <= 3)
-        var mtg4to6 = events.filter(event => event.attendees.length >= 4 && event.attendees.length <= 6)
-        var mtg7to10 = events.filter(event => event.attendees.length >= 7 && event.attendees.length <= 10)
-        var mtgOver10 = events.filter(event => event.attendees.length > 10)
-        appendLi('<span>3人以下のMTG</span><span>' + mtg1to3.length + '</span>');
-        appendLi('<span>4〜6人のMTG</span><span>' + mtg4to6.length + '</span>');
-        appendLi('<span>7〜10人のMTG</span><span>' + mtg7to10.length + '</span>');
-        appendLi('<span>11人以上のMTG</span><span>' + mtgOver10.length + '</span>');
+        var single = events.filter(event => !event.recurringEventId)
+        var recurring = events.filter(event => event.recurringEventId)
+        var durationAsHours = event => moment.duration(moment(event.end.dateTime).diff(moment(event.start.dateTime))).asHours()
+        var sumTime = (accumulator, currentValue) => accumulator + currentValue
+
+        var singleTotal = single.map(durationAsHours).reduce(sumTime)
+        var recurringTotal = recurring.map(durationAsHours).reduce(sumTime)
+        // single.forEach(event => console.log(event.start.dateTime, event.end.dateTime, moment.duration(moment(event.end.dateTime).diff(moment(event.start.dateTime))).asHours()))
+        appendLi('<h1>単発 MTG</h1><em>' + single.length + '</em><span> 回</span> / <em>' + singleTotal.toFixed(2) + '</em><span> 時間</span>');
+        appendLi('<h1>定例 MTG</h1><em>' + recurring.length + '</em><span> 回</span> / <em>' + recurringTotal.toFixed(2) + '</em><span> 時間</span>');
 
         var parent1 = document.getElementById('content1');
-        appendPre(parent1, '3人以下の MTG:');
-        appendAllToPre(mtg1to3, parent1);
+        appendPre(parent1, '単発 MTG:');
+        appendAllToPre(single, parent1);
         var parent2 = document.getElementById('content2');
-        appendPre(parent2, '4〜6人の MTG:');
-        appendAllToPre(mtg4to6, parent2);
-        var parent3 = document.getElementById('content3');
-        appendPre(parent3, '7〜10人の MTG:');
-        appendAllToPre(mtg7to10, parent3);
-        var parent4 = document.getElementById('content4');
-        appendPre(parent4, '11人以上の MTG:');
-        appendAllToPre(mtgOver10, parent4);
+        appendPre(parent2, '定例 MTG:');
+        appendAllToPre(recurring, parent2);
       });
     }
   </script>
