@@ -8,7 +8,7 @@
 </head>
 
 <body>
-  <h1>sb826png</h1>
+  <h1><s>MTG 1/2</s></h1>
 
   <!--Add buttons to initiate auth sequence and sign out-->
   <button id="authorize_button" style="display: none;">カレンダーへのアクセスを許可する</button>
@@ -73,9 +73,7 @@
      *  On load, called to load the auth2 library and API client library.
      */
     function handleClientLoad() {
-      document.getElementById('results').innerHTML = ''
-      document.getElementById('content1').innerHTML = ''
-      document.getElementById('content2').innerHTML = ''
+      clearAll()
 
       gapi.load('client:auth2', initClient);
     }
@@ -127,7 +125,14 @@
      *  Sign out the user upon button click.
      */
     function handleSignoutClick(event) {
+      clearAll()
       gapi.auth2.getAuthInstance().signOut();
+    }
+
+    function clearAll() {
+      document.getElementById('results').innerHTML = ''
+      document.getElementById('content1').innerHTML = ''
+      document.getElementById('content2').innerHTML = ''
     }
 
     /**
@@ -222,9 +227,10 @@
   <script>
     var datetimeStart = document.getElementById('datetime-start')
     var datetimeEnd = document.getElementById('datetime-end')
+    var lastMonth = moment().subtract(1, 'month')
 
-    datetimeStart.value = moment().subtract('1', 'month').format('YYYY-MM-DDT00:00')
-    datetimeEnd.value = moment().format('YYYY-MM-DDT00:00')
+    datetimeStart.value = lastMonth.startOf('month').format('YYYY-MM-DDTHH:mm')
+    datetimeEnd.value = lastMonth.endOf('month').format('YYYY-MM-DDTHH:mm')
   </script>
 
   <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
